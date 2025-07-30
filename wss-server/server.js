@@ -99,16 +99,14 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, './index.html'));
-});
+app.use(express.static(__dirname)); // Serves index.html and other static files
 
-app.listen(8888, () => {
-  console.log('Server running on port 8888');
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Start server
-// const PORT = process.env.PORT || 8888;
-// server.listen(PORT, () => {
-//   console.log(`WebSocket server listening on port ${PORT}`);
-// });
+const PORT = process.env.PORT || 8888;
+server.listen(PORT, () => {
+  console.log(`WebSocket server listening on port ${PORT}`);
+});

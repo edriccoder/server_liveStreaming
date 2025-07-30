@@ -2,14 +2,12 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install ffmpeg
 RUN apk add --no-cache ffmpeg
 
-COPY ./wss-server/package.json ../wss-server/package-lock.json ./
-COPY ./wss-server ./
+COPY ./wss-server/package.json ./package.json
+COPY ./wss-server/package-lock.json ./package-lock.json
+COPY ./wss-server/ ./
 RUN npm install
-
-COPY . .
 
 EXPOSE 8888
 
