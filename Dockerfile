@@ -5,7 +5,8 @@ WORKDIR /app
 # Install ffmpeg
 RUN apk add --no-cache ffmpeg
 
-COPY package.json package-lock.json ./
+COPY ./wss-server/package.json ../wss-server/package-lock.json ./
+COPY ./wss-server ./
 RUN npm install
 
 COPY . .

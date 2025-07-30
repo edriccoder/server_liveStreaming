@@ -34,17 +34,20 @@ wss.on('connection', (ws, req) => {
   // Create temporary files for the stream
   const tempFilePath = path.join(TEMP_DIR, `${streamKey}.webm`);
   const writeStream = fs.createWriteStream(tempFilePath, { flags: 'a' });
+
+  const NGINX_HOST = process.env.NGINX_HOST || 'localhost';
+  const RTMP_PORT = process.env.RTMP_PORT || '1935';
   
   // Start FFmpeg process to convert the incoming WebM to RTMP
   const ffmpeg = spawn('ffmpeg', [
-    '-i', 'pipe:0',           // Read from stdin
-    '-c:v', 'libx264',        // Video codec
-    '-preset', 'veryfast',    // Encoding preset
-    '-tune', 'zerolatency',   // Tune for low latency
-    '-c:a', 'aac',            // Audio codec
-    '-ar', '44100',           // Audio sample rate
-    '-f', 'flv',              // Output format
-    `rtmp://nginx:1935/hls/${streamKey}` // RTMP destination
+    '-i', 'pipe:0',
+    '-c:v', 'libx264',
+    '-preset', 'veryfast',
+    '-tune', 'zerolatency',
+    '-c:a', 'aac',
+    '-ar', '44100',
+    '-f', 'flv',
+    `rtmp://${NGINX_HOST}:${RTMP_PORT}/hls/${streamKey}`
   ]);
   
   // Handle incoming WebSocket binary data
