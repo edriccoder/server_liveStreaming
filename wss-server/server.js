@@ -37,10 +37,6 @@ wss.on('connection', (ws, req) => {
 
   const NGINX_HOST = process.env.NGINX_HOST || 'localhost';
   const RTMP_PORT = process.env.RTMP_PORT || '1935';
-
-  const express = require('express');
-  const app = express();
-  const path = require('path');
   
   // Start FFmpeg process to convert the incoming WebM to RTMP
   const ffmpeg = spawn('ffmpeg', [
