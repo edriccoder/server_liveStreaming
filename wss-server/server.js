@@ -110,7 +110,7 @@ app.listen(8888, () => {
 });
 
 // Start server
-const PORT = process.env.PORT || 8888;
-server.listen(PORT, () => {
-  console.log(`WebSocket server listening on port ${PORT}`);
-});
+// const PORT = process.env.PORT || 8888;
+// server.listen(PORT, () => {
+//   console.log(`WebSocket server listening on port ${PORT}`);
+// });
