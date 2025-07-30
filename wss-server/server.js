@@ -37,6 +37,10 @@ wss.on('connection', (ws, req) => {
 
   const NGINX_HOST = process.env.NGINX_HOST || 'localhost';
   const RTMP_PORT = process.env.RTMP_PORT || '1935';
+
+  const express = require('express');
+  const app = express();
+  const path = require('path');
   
   // Start FFmpeg process to convert the incoming WebM to RTMP
   const ffmpeg = spawn('ffmpeg', [
@@ -93,6 +97,16 @@ wss.on('connection', (ws, req) => {
     tempFilePath,
     startTime: new Date()
   });
+});
+
+app.use(express.static(path.join(__dirname, '../nginx')));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../nginx/index.html'));
+});
+
+app.listen(8888, () => {
+  console.log('Server running on port 8888');
 });
 
 // Start server
