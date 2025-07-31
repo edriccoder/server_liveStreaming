@@ -85,8 +85,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
             const streamKey = urlParams.get('stream') || 'my-live-stream';
-            const serverDomain = 'server-livestreaming.onrender.com';
-            const hlsUrl = `https://${serverDomain}/hls/${streamKey}.m3u8`;
+            // Update the path to match our new HLS output location
+            const hlsUrl = `/hls/${streamKey}/playlist.m3u8`;
             const statusEl = document.getElementById('status');
             let player;
             let checkStreamInterval;
@@ -155,6 +155,22 @@
                     });
             }
             
+            // Also check if stream is active via API
+            function checkStreamActive() {
+                fetch('/api/streams')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data[streamKey] && data[streamKey].active) {
+                            statusEl.textContent = 'Stream is active. Click play to watch.';
+                            statusEl.style.backgroundColor = '#e8f5e9';
+                            document.getElementById('startBtn').disabled = false;
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error checking stream status:', err);
+                    });
+            }
+            
             // Initialize player
             initPlayer();
             
@@ -171,6 +187,9 @@
                 statusEl.textContent = 'Reloading player...';
                 initPlayer();
             });
+            
+            // Check active streams every 10 seconds
+            setInterval(checkStreamActive, 10000);
         });
     </script>
 </body>

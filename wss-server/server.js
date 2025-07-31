@@ -16,6 +16,12 @@ if (!fs.existsSync(TEMP_DIR)) {
   fs.mkdirSync(TEMP_DIR);
 }
 
+// HLS output directory
+const HLS_DIR = path.join(__dirname, 'public', 'hls');
+if (!fs.existsSync(HLS_DIR)) {
+  fs.mkdirSync(HLS_DIR, { recursive: true });
+}
+
 // Maintain active streams
 const activeStreams = new Map();
 
@@ -34,11 +40,18 @@ wss.on('connection', (ws, req) => {
   // Create temporary files for the stream
   const tempFilePath = path.join(TEMP_DIR, `${streamKey}.webm`);
   const writeStream = fs.createWriteStream(tempFilePath, { flags: 'a' });
-
-  const NGINX_HOST = process.env.NGINX_HOST || 'localhost';
-  const RTMP_PORT = process.env.RTMP_PORT || '1935';
   
-  // Start FFmpeg process to convert the incoming WebM to RTMP
+  // Instead of trying to connect to NGINX, we'll directly generate HLS locally
+  // This eliminates dependency on a separate NGINX service
+  const hlsOutputPath = path.join(HLS_DIR, streamKey);
+  
+  if (!fs.existsSync(hlsOutputPath)) {
+    fs.mkdirSync(hlsOutputPath, { recursive: true });
+  }
+  
+  console.log(`HLS output will be at: ${hlsOutputPath}`);
+  
+  // Start FFmpeg process to convert the incoming WebM directly to HLS
   const ffmpeg = spawn('ffmpeg', [
     '-i', 'pipe:0',
     '-c:v', 'libx264',
@@ -46,14 +59,27 @@ wss.on('connection', (ws, req) => {
     '-tune', 'zerolatency',
     '-c:a', 'aac',
     '-ar', '44100',
-    '-f', 'flv',
-    `rtmp://${NGINX_HOST}:${RTMP_PORT}/hls/${streamKey}`
+    '-f', 'hls',
+    '-hls_time', '2',
+    '-hls_list_size', '10',
+    '-hls_flags', 'delete_segments+append_list',
+    '-hls_segment_type', 'mpegts',
+    '-hls_segment_filename', `${hlsOutputPath}/%03d.ts`,
+    `${hlsOutputPath}/playlist.m3u8`
   ]);
+  
+  console.log('FFmpeg process started');
   
   // Handle incoming WebSocket binary data
   ws.on('message', (data) => {
     // Write to FFmpeg's stdin
-    ffmpeg.stdin.write(data);
+    if (ffmpeg.stdin.writable) {
+      try {
+        ffmpeg.stdin.write(data);
+      } catch (error) {
+        console.error('Error writing to FFmpeg stdin:', error);
+      }
+    }
   });
   
   // Handle WebSocket closure
@@ -61,12 +87,18 @@ wss.on('connection', (ws, req) => {
     console.log(`Connection closed for stream: ${streamKey}`);
     
     // Close the FFmpeg process
-    ffmpeg.stdin.end();
+    if (ffmpeg.stdin.writable) {
+      ffmpeg.stdin.end();
+    }
     
     // Clean up
     writeStream.end();
     if (fs.existsSync(tempFilePath)) {
-      fs.unlinkSync(tempFilePath);
+      try {
+        fs.unlinkSync(tempFilePath);
+      } catch (err) {
+        console.error('Error removing temp file:', err);
+      }
     }
     
     activeStreams.delete(streamKey);
@@ -78,11 +110,16 @@ wss.on('connection', (ws, req) => {
   });
   
   ffmpeg.stderr.on('data', (data) => {
-    console.error(`FFmpeg stderr: ${data}`);
+    // FFmpeg logs to stderr even when there's no error
+    console.log(`FFmpeg stderr: ${data}`);
   });
   
   ffmpeg.on('close', (code) => {
     console.log(`FFmpeg process exited with code ${code} for stream: ${streamKey}`);
+  });
+  
+  ffmpeg.on('error', (err) => {
+    console.error(`FFmpeg process error for stream ${streamKey}:`, err);
   });
   
   // Store active stream info
@@ -91,14 +128,29 @@ wss.on('connection', (ws, req) => {
     ffmpeg,
     writeStream,
     tempFilePath,
+    hlsOutputPath,
     startTime: new Date()
   });
 });
 
-app.use(express.static(__dirname)); // Serves index.html and other static files
+// Serve static files including HLS segments
+app.use(express.static(path.join(__dirname, 'public')));
 
+// Serve index.html
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// API endpoint to check active streams
+app.get('/api/streams', (req, res) => {
+  const streams = {};
+  activeStreams.forEach((value, key) => {
+    streams[key] = {
+      active: true,
+      startTime: value.startTime
+    };
+  });
+  res.json(streams);
 });
 
 // Start server
