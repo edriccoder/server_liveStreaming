@@ -55,16 +55,18 @@ wss.on('connection', (ws, req) => {
     '-f', 'webm',
     '-i', 'pipe:0',
     '-c:v', 'libx264',
-    '-preset', 'veryfast',
+    '-preset', 'ultrafast', // Lower latency
     '-tune', 'zerolatency',
     '-c:a', 'aac',
     '-ar', '44100',
     '-f', 'hls',
-    '-hls_time', '2',
-    '-hls_list_size', '10',
-    '-hls_flags', 'delete_segments+append_list',
+    '-hls_time', '1', // Shorter segment duration
+    '-hls_list_size', '3', // Smaller playlist
+    '-hls_flags', 'delete_segments+append_list+discont_start', // Add discont_start for better sync
     '-hls_segment_type', 'mpegts',
     '-hls_segment_filename', `${HLS_DIR}/${streamKey}_%03d.ts`,
+    '-hls_allow_cache', '0', // Disable caching
+    '-hls_playlist_type', 'event', // For live/event
     `${HLS_DIR}/${streamKey}.m3u8`
   ]);
 
