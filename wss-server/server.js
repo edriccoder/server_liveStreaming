@@ -161,12 +161,25 @@ app.use('/hls', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
   // Redirect to the actual playlist file
   res.redirect(`/hls/${streamKey}/playlist.m3u8`);
 });
 
 // Serve HLS directory
 app.use('/hls', express.static(HLS_DIR));
+
+app.get('/hls/:streamKey.m3u8', (req, res) => {
+  const streamKey = req.params.streamKey;
+  const playlistPath = path.join(HLS_DIR, streamKey, 'playlist.m3u8');
+  
+  if (fs.existsSync(playlistPath)) {
+    // Send the file directly instead of redirecting
+    res.sendFile(playlistPath);
+  } else {
+    res.status(404).send('Stream not found');
+  }
+});
 
 // Start server
 const PORT = process.env.PORT || 8888;
