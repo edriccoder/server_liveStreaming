@@ -17,6 +17,7 @@ services:
       - ./nginx/rtmp.conf:/etc/nginx/conf.d/rtmp.conf
       - ./nginx/http.conf:/etc/nginx/conf.d/http.conf
       - ./nginx/index.html:/usr/share/nginx/html/index.html
+      - ./hls:/tmp/hls 
     networks:
       - streaming-net
 
