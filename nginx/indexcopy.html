@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Stream Player</title>
+    <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .video-container {
+            width: 100%;
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        h1 {
+            color: #333;
+        }
+        .video-js {
+            width: 100%;
+            height: 0;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Live Stream</h1>
+        <div class="video-container">
+            <video id="live-player" class="video-js vjs-default-skin" controls autoplay>
+                <p class="vjs-no-js">
+                    To view this video please enable JavaScript, or consider upgrading to a web browser that
+                    <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+                </p>
+            </video>
+        </div>
+    </div>
+
+    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-hls@5.15.0/dist/videojs-contrib-hls.min.js"></script> -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get stream key from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const streamKey = urlParams.get('stream') || 'my-live-stream';
+            
+            // Build the HLS URL
+            const hlsUrl = `/hls/${streamKey}.m3u8`;
+            
+            // Initialize video.js player
+            const player = videojs('live-player', {
+                liveui: true,
+                responsive: true,
+                fluid: true,
+                sources: [{
+                    src: hlsUrl,
+                    type: 'application/x-mpegURL'
+                }],
+                html5: {
+                    hls: {
+                        withCredentials: false,
+                        overrideNative: true,
+                        lowLatencyMode: true
+                    }
+                }
+            });
+            player.play();
+        });
+    </script>
+</body>
+</html>
