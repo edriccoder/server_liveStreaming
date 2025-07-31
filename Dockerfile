@@ -4,8 +4,8 @@ WORKDIR /app
 
 RUN apk add --no-cache ffmpeg
 
-COPY ./package.json ./package.json
-COPY ./package-lock.json ./package-lock.json
+COPY ./wss-server/package.json ./package.json
+COPY ./wss-server/package-lock.json ./package-lock.json
 COPY ./ ./
 RUN mkdir -p /app/temp
 
