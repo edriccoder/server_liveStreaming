@@ -153,6 +153,19 @@ app.get('/api/streams', (req, res) => {
   res.json(streams);
 });
 
+app.use('/hls', (req, res) => {
+  const streamKey = req.path.split('/')[1]?.replace('.m3u8', '');
+  if (!streamKey) {
+    return res.status(404).send('Stream not found');
+  }
+  
+  // Redirect to the actual playlist file
+  res.redirect(`/hls/${streamKey}/playlist.m3u8`);
+});
+
+// Serve HLS directory
+app.use('/hls', express.static(HLS_DIR));
+
 // Start server
 const PORT = process.env.PORT || 8888;
 server.listen(PORT, () => {
