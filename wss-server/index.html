@@ -53,7 +53,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
             const streamKey = urlParams.get('stream') || 'my-live-stream';
-            const hlsUrl = `/hls/${streamKey}.m3u8`;
+            // Change this to your host IP and mapped port
+            const hlsUrl = `https://server-livestreaming.onrender.com/hls/${streamKey}.m3u8`;
 
             const player = videojs('live-player', {
                 liveui: true,
