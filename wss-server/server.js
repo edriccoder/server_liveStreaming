@@ -17,7 +17,8 @@ if (!fs.existsSync(TEMP_DIR)) {
 }
 
 // HLS output directory
-const HLS_DIR = path.join(__dirname, 'public', 'hls');
+const HLS_DIR = '/tmp/hls';
+
 if (!fs.existsSync(HLS_DIR)) {
   fs.mkdirSync(HLS_DIR, { recursive: true });
 }
