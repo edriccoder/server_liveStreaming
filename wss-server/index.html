@@ -37,7 +37,8 @@
     <div class="container">
         <h1>Live Stream</h1>
         <div class="video-container">
-            <video id="live-player" class="video-js vjs-default-skin" controls autoplay>
+            <button id="startBtn">Start Stream</button>
+            <video id="live-player" class="video-js vjs-default-skin" controls muted>
                 <p class="vjs-no-js">
                     To view this video please enable JavaScript, or consider upgrading to a web browser that
                     <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
@@ -75,6 +76,21 @@
                 }
             });
             player.play();
+        });
+
+        document.getElementById('startBtn').addEventListener('click', () => {
+            const player = videojs('live-player', {
+                liveui: true,
+                responsive: true,
+                fluid: true,
+                sources: [{
+                    src: `/hls/${streamKey}.m3u8`,
+                    type: 'application/x-mpegURL'
+                }]
+            });
+            player.play().catch(err => {
+                console.error("Autoplay failed:", err);
+            });
         });
     </script>
 </body>
