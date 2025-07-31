@@ -153,12 +153,14 @@ app.get('/api/streams', (req, res) => {
   res.json(streams);
 });
 
-app.use('/hls', (req, res) => {
+app.use('/hls', (req, res, next) => {
   const streamKey = req.path.split('/')[1]?.replace('.m3u8', '');
   if (!streamKey) {
     return res.status(404).send('Stream not found');
   }
-  
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   // Redirect to the actual playlist file
   res.redirect(`/hls/${streamKey}/playlist.m3u8`);
 });
