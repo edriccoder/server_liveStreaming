@@ -8,16 +8,22 @@ const app = express();
 
 // Create HTTP server
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
 
-// Temporary file paths (unused, but keeping for potential future use)
+// WebSocket server with proper configuration for Heroku
+const wss = new WebSocket.Server({ 
+  server,
+  path: '/publish', // Handle all connections under /publish path
+  perMessageDeflate: false // Disable compression for streaming
+});
+
+// Temporary file paths
 const TEMP_DIR = path.join(__dirname, 'temp');
 if (!fs.existsSync(TEMP_DIR)) {
-  fs.mkdirSync(TEMP_DIR);
+  fs.mkdirSync(TEMP_DIR, { recursive: true });
 }
 
 // HLS output directory
-const HLS_DIR = '/tmp/hls';
+const HLS_DIR = path.join(process.env.NODE_ENV === 'production' ? '/tmp/hls' : __dirname, 'hls');
 
 if (!fs.existsSync(HLS_DIR)) {
   fs.mkdirSync(HLS_DIR, { recursive: true });
@@ -28,7 +34,7 @@ const activeStreams = new Map();
 
 wss.on('connection', (ws, req) => {
   // Extract stream key from URL path (e.g., /publish/my-stream-key)
-  const pathMatch = req.url.match(/^\/publish\/(.+)$/);
+  const pathMatch = req.url.match(/^\/([^\/]+)$/);
   if (!pathMatch) {
     console.error('Invalid stream path:', req.url);
     ws.close(1008, 'Invalid stream path');
@@ -44,7 +50,7 @@ wss.on('connection', (ws, req) => {
     return;
   }
 
-  // Create temporary files for the stream (unused currently)
+  // Create temporary files for the stream
   const tempFilePath = path.join(TEMP_DIR, `${streamKey}.webm`);
   const writeStream = fs.createWriteStream(tempFilePath, { flags: 'a' });
 
@@ -100,15 +106,6 @@ wss.on('connection', (ws, req) => {
 
     // Clean up
     writeStream.end();
-    if (fs.existsSync(tempFilePath)) {
-      console.log(`Temp file created at ${tempFilePath}`);
-      // Do not delete for debugging; comment out if needed
-      // try {
-      //   fs.unlinkSync(tempFilePath);
-      // } catch (err) {
-      //   console.error('Error removing temp file:', err);
-      // }
-    }
 
     activeStreams.delete(streamKey);
   });
@@ -142,58 +139,52 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-// Serve static files including HLS segments
-app.use(express.static(path.join(__dirname, '../nginx')));
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../nginx/index.html'));
-});
-
-// API endpoint to check active streams
-app.get('/api/streams', (req, res) => {
-  const streams = {};
-  activeStreams.forEach((value, key) => {
-    streams[key] = {
-      active: true,
-      startTime: value.startTime
-    };
-  });
-  res.json(streams);
-});
-
-app.use('/hls', (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  next();
-});
-
-// Serve HLS directory
-app.use('/hls', express.static(HLS_DIR));
-
-// Debug endpoint to list HLS files for a stream
-app.get('/api/debug/hls/:streamKey', (req, res) => {
-  const pattern = new RegExp(`^${req.params.streamKey}`);
-  fs.readdir(HLS_DIR, (err, files) => {
-    if (err) return res.status(500).json(err);
-    const matchingFiles = files.filter(file => pattern.test(file));
-    res.json(matchingFiles);
-  });
-});
-
-// Debug endpoint to download temp webm file
-app.get('/api/debug/temp/:streamKey', (req, res) => {
-  const file = path.join(TEMP_DIR, `${req.params.streamKey}.webm`);
-  if (fs.existsSync(file)) {
-    res.setHeader('Content-Type', 'video/webm');
-    res.sendFile(file);
-  } else {
-    res.status(404).send('Not found');
+// Serve static files 
+const staticDir = path.join(__dirname, 'nginx');
+if (!fs.existsSync(staticDir)) {
+  fs.mkdirSync(staticDir, { recursive: true });
+  
+  // Create a minimal index.html if it doesn't exist
+  const indexPath = path.join(staticDir, 'index.html');
+  if (!fs.existsSync(indexPath)) {
+    const minimalHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Live Streaming</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        video { max-width: 100%; }
+      </style>
+    </head>
+    <body>
+      <h1>Live Streaming</h1>
+      <div id="videoContainer">
+        <video id="videoPlayer" controls autoplay></video>
+      </div>
+      <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const streamKey = urlParams.get('stream') || 'my-live-stream';
+        
+        const videoPlayer = document.getElementById('videoPlayer');
+        const hlsUrl = '/hls/' + streamKey + '.m3u8';
+        
+        if (Hls.isSupported()) {
+          const hls = new Hls();
+          hls.loadSource(hlsUrl);
+          hls.attachMedia(videoPlayer);
+        } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+          videoPlayer.src = hlsUrl;
+        }
+      </script>
+      <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    </body>
+    </html>
+    `;
+    fs.writeFileSync(indexPath, minimalHtml);
   }
-});
+}
 
-// Start server
-const PORT = process.env.PORT || 8888;
-server.listen(PORT, () => {
-  console.log(`WebSocket server listening on port ${PORT}`);
-});
+app.use(express.static(staticDir));
+
+app
