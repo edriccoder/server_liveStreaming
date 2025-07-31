@@ -10,7 +10,7 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Temporary file paths
+// Temporary file paths (unused, but keeping for potential future use)
 const TEMP_DIR = path.join(__dirname, 'temp');
 if (!fs.existsSync(TEMP_DIR)) {
   fs.mkdirSync(TEMP_DIR);
@@ -37,21 +37,21 @@ wss.on('connection', (ws, req) => {
 
   const streamKey = pathMatch[1];
   console.log(`New connection for stream: ${streamKey}`);
-  
-  // Create temporary files for the stream
+
+  // Create temporary files for the stream (unused currently)
   const tempFilePath = path.join(TEMP_DIR, `${streamKey}.webm`);
   const writeStream = fs.createWriteStream(tempFilePath, { flags: 'a' });
-  
+
   // Instead of trying to connect to NGINX, we'll directly generate HLS locally
   // This eliminates dependency on a separate NGINX service
   const hlsOutputPath = path.join(HLS_DIR, streamKey);
-  
+
   if (!fs.existsSync(hlsOutputPath)) {
     fs.mkdirSync(hlsOutputPath, { recursive: true });
   }
-  
+
   console.log(`HLS output will be at: ${hlsOutputPath}`);
-  
+
   // Start FFmpeg process to convert the incoming WebM directly to HLS
   const ffmpeg = spawn('ffmpeg', [
     '-i', 'pipe:0',
@@ -68,9 +68,9 @@ wss.on('connection', (ws, req) => {
     '-hls_segment_filename', `${hlsOutputPath}/%03d.ts`,
     `${hlsOutputPath}/playlist.m3u8`
   ]);
-  
+
   console.log('FFmpeg process started');
-  
+
   // Handle incoming WebSocket binary data
   ws.on('message', (data) => {
     // Write to FFmpeg's stdin
@@ -82,16 +82,16 @@ wss.on('connection', (ws, req) => {
       }
     }
   });
-  
+
   // Handle WebSocket closure
   ws.on('close', () => {
     console.log(`Connection closed for stream: ${streamKey}`);
-    
+
     // Close the FFmpeg process
     if (ffmpeg.stdin.writable) {
       ffmpeg.stdin.end();
     }
-    
+
     // Clean up
     writeStream.end();
     if (fs.existsSync(tempFilePath)) {
@@ -101,28 +101,28 @@ wss.on('connection', (ws, req) => {
         console.error('Error removing temp file:', err);
       }
     }
-    
+
     activeStreams.delete(streamKey);
   });
-  
+
   // Handle FFmpeg process events
   ffmpeg.stdout.on('data', (data) => {
     console.log(`FFmpeg stdout: ${data}`);
   });
-  
+
   ffmpeg.stderr.on('data', (data) => {
     // FFmpeg logs to stderr even when there's no error
     console.log(`FFmpeg stderr: ${data}`);
   });
-  
+
   ffmpeg.on('close', (code) => {
     console.log(`FFmpeg process exited with code ${code} for stream: ${streamKey}`);
   });
-  
+
   ffmpeg.on('error', (err) => {
     console.error(`FFmpeg process error for stream ${streamKey}:`, err);
   });
-  
+
   // Store active stream info
   activeStreams.set(streamKey, {
     ws,
@@ -160,20 +160,10 @@ app.use('/hls', (req, res, next) => {
   next();
 });
 
+// Removed the specific app.get('/hls/:streamKey.m3u8') as it causes relative path issues with segments.
+// Instead, rely on static serving for /hls/${streamKey}/playlist.m3u8 and segments.
+
 // Serve HLS directory
-
-app.get('/hls/:streamKey.m3u8', (req, res) => {
-  const streamKey = req.params.streamKey;
-  const playlistPath = path.join(HLS_DIR, streamKey, 'playlist.m3u8');
-
-  if (fs.existsSync(playlistPath)) {
-    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-    res.sendFile(playlistPath);
-  } else {
-    res.status(404).send('Stream not found');
-  }
-});
-
 app.use('/hls', express.static(HLS_DIR));
 
 // Start server
