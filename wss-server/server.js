@@ -161,7 +161,6 @@ app.use('/hls', (req, res, next) => {
 });
 
 // Serve HLS directory
-app.use('/hls', express.static(HLS_DIR));
 
 app.get('/hls/:streamKey.m3u8', (req, res) => {
   const streamKey = req.params.streamKey;
@@ -174,6 +173,8 @@ app.get('/hls/:streamKey.m3u8', (req, res) => {
     res.status(404).send('Stream not found');
   }
 });
+
+app.use('/hls', express.static(HLS_DIR));
 
 // Start server
 const PORT = process.env.PORT || 8888;
