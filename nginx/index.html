@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+< lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,32 +33,23 @@
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Live Stream</h1>
-        <div class="video-container">
-            <video id="live-player" class="video-js vjs-default-skin" controls autoplay>
-                <p class="vjs-no-js">
-                    To view this video please enable JavaScript, or consider upgrading to a web browser that
-                    <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
-                </p>
-            </video>
-        </div>
-    </div>
+<body style="margin:0;background:#000;">
+    <video id="live-player" class="video-js vjs-default-skin" controls autoplay playsinline style="width:100vw;height:100vh;object-fit:contain;">
+        <p class="vjs-no-js">
+            To view this video please enable JavaScript, or consider upgrading to a web browser that
+            <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+        </p>
+    </video>
 
     <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-hls@5.15.0/dist/videojs-contrib-hls.min.js"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Get stream key from URL
             const urlParams = new URLSearchParams(window.location.search);
             const streamKey = urlParams.get('stream') || 'my-live-stream';
-            
-            // Build the HLS URL
             const hlsUrl = `/hls/${streamKey}.m3u8`;
-            
-            // Initialize video.js player
+
+            // Initialize video.js player with VHS options
             const player = videojs('live-player', {
                 liveui: true,
                 responsive: true,
@@ -68,14 +59,19 @@
                     type: 'application/x-mpegURL'
                 }],
                 html5: {
-                    hls: {
+                    vhs: {
                         withCredentials: false,
                         overrideNative: true,
                         lowLatencyMode: true
                     }
                 }
             });
-            player.play();
+
+            // Always restart playback on page load
+            player.ready(function() {
+                player.currentTime(0);
+                player.play();
+            });
         });
     </script>
 </body>
