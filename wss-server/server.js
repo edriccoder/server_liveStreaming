@@ -135,7 +135,7 @@ wss.on('connection', (ws, req) => {
 
 // Serve static files including HLS segments
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../nginx/index.html'));
+  res.sendFile(path.join(__dirname, 'nginx/index.html'));
 });
 
 // API endpoint to check active streams
