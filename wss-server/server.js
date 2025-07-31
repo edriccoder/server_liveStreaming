@@ -38,22 +38,21 @@ wss.on('connection', (ws, req) => {
   const streamKey = pathMatch[1];
   console.log(`New connection for stream: ${streamKey}`);
 
+  if (activeStreams.has(streamKey)) {
+    console.log(`Stream ${streamKey} already active, closing new connection`);
+    ws.close(1008, 'Stream already active');
+    return;
+  }
+
   // Create temporary files for the stream (unused currently)
   const tempFilePath = path.join(TEMP_DIR, `${streamKey}.webm`);
   const writeStream = fs.createWriteStream(tempFilePath, { flags: 'a' });
 
-  // Instead of trying to connect to NGINX, we'll directly generate HLS locally
-  // This eliminates dependency on a separate NGINX service
-  const hlsOutputPath = path.join(HLS_DIR, streamKey);
-
-  if (!fs.existsSync(hlsOutputPath)) {
-    fs.mkdirSync(hlsOutputPath, { recursive: true });
-  }
-
-  console.log(`HLS output will be at: ${hlsOutputPath}`);
+  console.log(`HLS output will be at: ${HLS_DIR}/${streamKey}.m3u8`);
 
   // Start FFmpeg process to convert the incoming WebM directly to HLS
   const ffmpeg = spawn('ffmpeg', [
+    '-f', 'webm',
     '-i', 'pipe:0',
     '-c:v', 'libx264',
     '-preset', 'veryfast',
@@ -65,14 +64,21 @@ wss.on('connection', (ws, req) => {
     '-hls_list_size', '10',
     '-hls_flags', 'delete_segments+append_list',
     '-hls_segment_type', 'mpegts',
-    '-hls_segment_filename', `${hlsOutputPath}/%03d.ts`,
-    `${hlsOutputPath}/playlist.m3u8`
+    '-hls_segment_filename', `${HLS_DIR}/${streamKey}_%03d.ts`,
+    `${HLS_DIR}/${streamKey}.m3u8`
   ]);
 
   console.log('FFmpeg process started');
 
   // Handle incoming WebSocket binary data
   ws.on('message', (data) => {
+    console.log(`Received data chunk of size ${data.length} for stream ${streamKey}`);
+    // Write to temp file for debugging
+    try {
+      writeStream.write(data);
+    } catch (error) {
+      console.error('Error writing to temp file:', error);
+    }
     // Write to FFmpeg's stdin
     if (ffmpeg.stdin.writable) {
       try {
@@ -95,11 +101,13 @@ wss.on('connection', (ws, req) => {
     // Clean up
     writeStream.end();
     if (fs.existsSync(tempFilePath)) {
-      try {
-        fs.unlinkSync(tempFilePath);
-      } catch (err) {
-        console.error('Error removing temp file:', err);
-      }
+      console.log(`Temp file created at ${tempFilePath}`);
+      // Do not delete for debugging; comment out if needed
+      // try {
+      //   fs.unlinkSync(tempFilePath);
+      // } catch (err) {
+      //   console.error('Error removing temp file:', err);
+      // }
     }
 
     activeStreams.delete(streamKey);
@@ -129,7 +137,7 @@ wss.on('connection', (ws, req) => {
     ffmpeg,
     writeStream,
     tempFilePath,
-    hlsOutputPath,
+    hlsOutputPath: HLS_DIR,
     startTime: new Date()
   });
 });
@@ -160,11 +168,29 @@ app.use('/hls', (req, res, next) => {
   next();
 });
 
-// Removed the specific app.get('/hls/:streamKey.m3u8') as it causes relative path issues with segments.
-// Instead, rely on static serving for /hls/${streamKey}/playlist.m3u8 and segments.
-
 // Serve HLS directory
 app.use('/hls', express.static(HLS_DIR));
+
+// Debug endpoint to list HLS files for a stream
+app.get('/api/debug/hls/:streamKey', (req, res) => {
+  const pattern = new RegExp(`^${req.params.streamKey}`);
+  fs.readdir(HLS_DIR, (err, files) => {
+    if (err) return res.status(500).json(err);
+    const matchingFiles = files.filter(file => pattern.test(file));
+    res.json(matchingFiles);
+  });
+});
+
+// Debug endpoint to download temp webm file
+app.get('/api/debug/temp/:streamKey', (req, res) => {
+  const file = path.join(TEMP_DIR, `${req.params.streamKey}.webm`);
+  if (fs.existsSync(file)) {
+    res.setHeader('Content-Type', 'video/webm');
+    res.sendFile(file);
+  } else {
+    res.status(404).send('Not found');
+  }
+});
 
 // Start server
 const PORT = process.env.PORT || 8888;
