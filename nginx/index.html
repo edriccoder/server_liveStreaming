@@ -55,7 +55,7 @@
             const streamKey = urlParams.get('stream') || 'my-live-stream';
             
             // Build the HLS URL
-            const hlsUrl = `/hls/${streamKey}.m3u8`;
+            const hlsUrl = `/vhs/${streamKey}.m3u8`;
             
             // Initialize video.js player
             const player = videojs('live-player', {
