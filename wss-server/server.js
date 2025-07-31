@@ -166,9 +166,9 @@ app.use('/hls', express.static(HLS_DIR));
 app.get('/hls/:streamKey.m3u8', (req, res) => {
   const streamKey = req.params.streamKey;
   const playlistPath = path.join(HLS_DIR, streamKey, 'playlist.m3u8');
-  
+
   if (fs.existsSync(playlistPath)) {
-    // Send the file directly instead of redirecting
+    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
     res.sendFile(playlistPath);
   } else {
     res.status(404).send('Stream not found');
