@@ -51,14 +51,10 @@
     <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-hls@5.15.0/dist/videojs-contrib-hls.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Get stream key from URL
             const urlParams = new URLSearchParams(window.location.search);
             const streamKey = urlParams.get('stream') || 'my-live-stream';
-            
-            // Build the HLS URL
             const hlsUrl = `/hls/${streamKey}.m3u8`;
-            
-            // Initialize video.js player
+
             const player = videojs('live-player', {
                 liveui: true,
                 responsive: true,
@@ -66,28 +62,15 @@
                 sources: [{
                     src: hlsUrl,
                     type: 'application/x-mpegURL'
-                }],
-                html5: {
-                    hls: {
-                        withCredentials: false,
-                        overrideNative: true,
-                        lowLatencyMode: true
-                    }
-                }
+                }]
             });
-            player.play();
+            player.play().catch(err => {
+                console.warn("Autoplay failed:", err);
+            });
         });
 
         document.getElementById('startBtn').addEventListener('click', () => {
-            const player = videojs('live-player', {
-                liveui: true,
-                responsive: true,
-                fluid: true,
-                sources: [{
-                    src: `/hls/${streamKey}.m3u8`,
-                    type: 'application/x-mpegURL'
-                }]
-            });
+            const player = videojs('live-player');
             player.play().catch(err => {
                 console.error("Autoplay failed:", err);
             });
