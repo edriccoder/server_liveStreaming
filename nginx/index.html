@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+< lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,6 +11,19 @@
             margin: 0;
             padding: 0;
             background: #000;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .video-container {
+            width: 100%;
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        h1 {
+            color: #333;
         }
         .video-js,
         #live-player {
@@ -47,125 +60,36 @@
     </video>
 
     <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.0/dist/hls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
             const streamKey = urlParams.get('stream') || 'my-live-stream';
-            
-            // Make sure this path matches your server configuration
-            const hlsUrl = window.location.protocol + '//' + window.location.host + `/hls/${streamKey}.m3u8`;
-            
-            console.log('Attempting to load HLS stream from:', hlsUrl);
+            const hlsUrl = `/hls/${streamKey}.m3u8`;
 
-            // Check if HLS is supported
-            const video = document.getElementById('live-player');
-            
-            // First try native HLS support
-            if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                console.log('Using native HLS support');
-                // Initialize video.js player
-                const player = videojs('live-player', {
-                    liveui: true,
-                    responsive: true,
-                    fluid: true,
-                    liveTracker: {
-                        trackingThreshold: 0.3,
-                        liveTolerance: 0.5
-                    },
-                    sources: [{
-                        src: hlsUrl,
-                        type: 'application/vnd.apple.mpegurl'
-                    }]
-                });
-                
-                setupPlayerCallbacks(player);
-            }
-            // Otherwise use HLS.js
-            else if (Hls.isSupported()) {
-                console.log('Using HLS.js');
-                const hls = new Hls({
-                    debug: true,
-                    lowLatencyMode: true,
-                    backBufferLength: 0,
-                    maxBufferLength: 2,
-                    maxMaxBufferLength: 4
-                });
-                
-                hls.loadSource(hlsUrl);
-                
-                // Handle HLS.js errors
-                hls.on(Hls.Events.ERROR, function(event, data) {
-                    console.error('HLS.js error:', data.type, data.details, data);
-                    if (data.fatal) {
-                        switch(data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                                console.log('Network error, trying to recover...');
-                                hls.startLoad();
-                                break;
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                                console.log('Media error, trying to recover...');
-                                hls.recoverMediaError();
-                                break;
-                            default:
-                                console.log('Unrecoverable error, destroying HLS instance');
-                                hls.destroy();
-                                break;
-                        }
+            // Initialize video.js player with VHS options
+            const player = videojs('live-player', {
+                liveui: true,
+                responsive: true,
+                fluid: true,
+                sources: [{
+                    src: hlsUrl,
+                    type: 'application/x-mpegURL'
+                }],
+                html5: {
+                    vhs: {
+                        withCredentials: false,
+                        overrideNative: true,
+                        lowLatencyMode: true
                     }
-                });
-                
-                // Bind HLS to the video element
-                hls.attachMedia(video);
-                
-                hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    console.log('HLS manifest parsed, starting playback');
-                    video.play();
-                });
-                
-                // Initialize Video.js after HLS.js setup
-                const player = videojs('live-player', {
-                    liveui: true,
-                    techOrder: ["html5"],
-                    html5: { hls: { overrideNative: true } }
-                });
-                
-                setupPlayerCallbacks(player);
-            } else {
-                console.error('Neither native HLS nor HLS.js are supported in this browser');
-                alert('Your browser does not support HLS playback');
-            }
-            
-            // Helper function for player callbacks
-            function setupPlayerCallbacks(player) {
-                player.ready(function() {
-                    console.log('Player is ready');
-                    
-                    // Start at live edge (not time 0)
-                    player.on('loadedmetadata', function() {
-                        if (player.liveTracker && player.liveTracker.seekableEnd) {
-                            const livePoint = player.liveTracker.seekableEnd();
-                            console.log('Setting to live point:', livePoint);
-                            player.currentTime(livePoint);
-                        }
-                        player.play().catch(e => console.error('Play failed:', e));
-                    });
-                    
-                    // Recovery for stalls
-                    player.on('waiting', function() {
-                        console.log('Player stalled, attempting recovery');
-                        setTimeout(function() {
-                            if (player.paused()) {
-                                player.play().catch(e => console.error('Recovery play failed:', e));
-                            }
-                        }, 1000);
-                    });
-                    
-                    player.on('error', function(e) {
-                        console.error('Video.js error:', player.error());
-                    });
-                });
-            }
+                }
+            });
+
+            // Always restart playback on page load
+            player.ready(function() {
+                player.currentTime(0);
+                player.play();
+            });
         });
     </script>
 </body>
