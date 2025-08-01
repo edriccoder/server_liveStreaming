@@ -33,9 +33,10 @@ services:
       - streaming-net
     volumes:
       - ./wss-server/temp:/app/temp
+      - hls-data:/tmp/hls
       
   ffmpeg:
-    build::
+    build:  # Fixed the double colon typo
       context: ./ffmeg
       dockerfile: Dockerfile
     env_file:

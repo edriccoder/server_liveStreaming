@@ -72,6 +72,10 @@
                 liveui: true,
                 responsive: true,
                 fluid: true,
+                liveTracker: {
+                    trackingThreshold: 0.5,  // Lower threshold for "live" determination
+                    liveTolerance: 1  // Lower tolerance means closer to live edge
+                },
                 sources: [{
                     src: hlsUrl,
                     type: 'application/x-mpegURL'
@@ -80,9 +84,29 @@
                     vhs: {
                         withCredentials: false,
                         overrideNative: true,
-                        lowLatencyMode: true
+                        lowLatencyMode: true,
+                        bandwidth: 5500000,  // Higher initial bandwidth assumption
+                        useBandwidthFromLocalStorage: false  // Don't rely on cached bandwidth
                     }
                 }
+            });
+
+            // Add this after player initialization
+            player.ready(function() {
+                // Force player to start at live edge
+                player.currentTime(player.liveTracker.seekableEnd());
+                
+                // Add automatic recovery for stalls
+                player.on('waiting', function() {
+                    const currentTime = player.currentTime();
+                    setTimeout(function() {
+                        if (player.paused()) {
+                            player.play();
+                        }
+                    }, 1000);
+                });
+                
+                player.play();
             });
 
             // Always restart playback on page load

@@ -55,18 +55,22 @@ wss.on('connection', (ws, req) => {
     '-f', 'webm',
     '-i', 'pipe:0',
     '-c:v', 'libx264',
-    '-preset', 'ultrafast', // Lower latency
+    '-preset', 'ultrafast',
     '-tune', 'zerolatency',
+    '-g', '30',  // GOP size - keyframe every 30 frames for better seeking
+    '-sc_threshold', '0',  // Disable scene detection
     '-c:a', 'aac',
     '-ar', '44100',
+    '-b:a', '128k',  // Audio bitrate
     '-f', 'hls',
-    '-hls_time', '1', // Shorter segment duration
-    '-hls_list_size', '3', // Smaller playlist
-    '-hls_flags', 'delete_segments+append_list+discont_start', // Add discont_start for better sync
+    '-hls_time', '0.5',  // Even shorter segments
+    '-hls_list_size', '2',  // Smaller playlist, less buffering
+    '-hls_flags', 'delete_segments+append_list+omit_endlist+discont_start',  // Better for live
     '-hls_segment_type', 'mpegts',
     '-hls_segment_filename', `${HLS_DIR}/${streamKey}_%03d.ts`,
-    '-hls_allow_cache', '0', // Disable caching
-    '-hls_playlist_type', 'event', // For live/event
+    '-hls_allow_cache', '0',
+    '-hls_playlist_type', 'live',  // Changed from 'event' to 'live'
+    '-max_muxing_queue_size', '1024',  // Prevent "Too many packets buffered" errors
     `${HLS_DIR}/${streamKey}.m3u8`
   ]);
 
