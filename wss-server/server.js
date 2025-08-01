@@ -145,7 +145,7 @@ wss.on('connection', (ws, req) => {
 app.use(express.static(path.join(__dirname, '../nginx')));
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../nginx/index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // API endpoint to check active streams
