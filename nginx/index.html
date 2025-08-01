@@ -62,35 +62,52 @@
     <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const streamKey = urlParams.get('stream') || 'my-live-stream';
-            const hlsUrl = `/hls/${streamKey}.m3u8`;
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const streamKey = urlParams.get('stream') || 'my-live-stream';
+        const hlsUrl = `/hls/${streamKey}.m3u8`;
 
-            // Initialize video.js player with VHS options
-            const player = videojs('live-player', {
-                liveui: true,
-                responsive: true,
-                fluid: true,
-                sources: [{
-                    src: hlsUrl,
-                    type: 'application/x-mpegURL'
-                }],
-                html5: {
-                    vhs: {
-                        withCredentials: false,
-                        overrideNative: true,
-                        lowLatencyMode: true
-                    }
+        // Initialize video.js player with enhanced low-latency options
+        const player = videojs('live-player', {
+            liveui: true,
+            responsive: true,
+            fluid: true,
+            liveTracker: {
+                trackingThreshold: 0.2, // Reduced threshold
+                liveTolerance: 0.5 // Lower tolerance for "live" determination
+            },
+            sources: [{
+                src: hlsUrl,
+                type: 'application/x-mpegURL'
+            }],
+            html5: {
+                vhs: {
+                    withCredentials: false,
+                    overrideNative: true,
+                    lowLatencyMode: true,
+                    useBandwidthFromLocalStorage: true,
+                    experimentalBufferBasedABR: true,
+                    experimentalLLHLS: true,
+                    backBufferLength: 0, // Minimize back buffer
+                    liveSyncDurationCount: 1 // Sync with only 1 segment
                 }
-            });
-
-            // Always restart playback on page load
-            player.ready(function() {
-                player.currentTime(0);
-                player.play();
-            });
+            }
         });
-    </script>
+
+        // Always restart playback on page load
+        player.ready(function() {
+            player.currentTime(0);
+            player.play();
+            
+            // Force player to stay close to live edge
+            setInterval(() => {
+                if (player.liveTracker && player.liveTracker.isLive() && 
+                    player.liveTracker.liveCurrentTime() - player.currentTime() > 1) {
+                    player.currentTime(player.liveTracker.liveCurrentTime());
+                }
+            }, 1000);
+        });
+    });
+</script>
 </body>
 </html>

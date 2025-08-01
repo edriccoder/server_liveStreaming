@@ -55,18 +55,27 @@ wss.on('connection', (ws, req) => {
     '-f', 'webm',
     '-i', 'pipe:0',
     '-c:v', 'libx264',
-    '-preset', 'ultrafast', // Lower latency
+    '-preset', 'ultrafast',
     '-tune', 'zerolatency',
+    '-profile:v', 'baseline', // Lower profile for reduced latency
+    '-g', '15',  // Set GOP size to 15 frames (shorter GOP = lower latency)
+    '-keyint_min', '15', // Force minimum keyframe interval
+    '-sc_threshold', '0', // Disable scene change detection
+    '-b:v', '2000k', // Control bitrate
+    '-bufsize', '1000k', // Smaller buffer size
+    '-maxrate', '2500k', // Maximum bitrate
+    '-force_key_frames', 'expr:gte(t,n_forced*1)',  // Force keyframe every 1s
     '-c:a', 'aac',
     '-ar', '44100',
+    '-b:a', '128k', // Control audio bitrate
     '-f', 'hls',
-    '-hls_time', '1', // Shorter segment duration
-    '-hls_list_size', '3', // Smaller playlist
-    '-hls_flags', 'delete_segments+append_list+discont_start', // Add discont_start for better sync
+    '-hls_time', '0.5', // Reduce segment length to 0.5s (was 1s)
+    '-hls_list_size', '2', // Reduce to 2 segments in playlist (was 3)
+    '-hls_flags', 'delete_segments+append_list+discont_start+independent_segments', // Add independent_segments
     '-hls_segment_type', 'mpegts',
     '-hls_segment_filename', `${HLS_DIR}/${streamKey}_%03d.ts`,
-    '-hls_allow_cache', '0', // Disable caching
-    '-hls_playlist_type', 'event', // For live/event
+    '-hls_allow_cache', '0',
+    '-hls_playlist_type', 'event',
     `${HLS_DIR}/${streamKey}.m3u8`
   ]);
 
