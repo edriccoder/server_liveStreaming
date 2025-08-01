@@ -55,27 +55,25 @@ wss.on('connection', (ws, req) => {
     '-f', 'webm',
     '-i', 'pipe:0',
     '-c:v', 'libx264',
-    '-preset', 'ultrafast',
+    '-preset', 'veryfast',  // Changed from ultrafast for better stability
     '-tune', 'zerolatency',
-    '-profile:v', 'baseline', // Lower profile for reduced latency
-    '-g', '15',  // Set GOP size to 15 frames (shorter GOP = lower latency)
-    '-keyint_min', '15', // Force minimum keyframe interval
-    '-sc_threshold', '0', // Disable scene change detection
-    '-b:v', '2000k', // Control bitrate
-    '-bufsize', '1000k', // Smaller buffer size
-    '-maxrate', '2500k', // Maximum bitrate
-    '-force_key_frames', 'expr:gte(t,n_forced*1)',  // Force keyframe every 1s
+    '-profile:v', 'baseline',
+    '-g', '30',  // Increased from 15 for better stability
+    '-keyint_min', '30',  // Match with -g value
+    '-sc_threshold', '0',
+    '-b:v', '2500k',  // Increased bitrate slightly
+    '-bufsize', '2500k',  // Increased buffer size
+    '-maxrate', '3000k',  // Increased max rate
     '-c:a', 'aac',
     '-ar', '44100',
-    '-b:a', '128k', // Control audio bitrate
+    '-b:a', '128k',
     '-f', 'hls',
-    '-hls_time', '0.5', // Reduce segment length to 0.5s (was 1s)
-    '-hls_list_size', '2', // Reduce to 2 segments in playlist (was 3)
-    '-hls_flags', 'delete_segments+append_list+discont_start+independent_segments', // Add independent_segments
+    '-hls_time', '1',  // Changed from 0.5 to 1 for better compatibility
+    '-hls_list_size', '3',  // Changed from 2 to 3 for smoother playback
+    '-hls_flags', 'delete_segments+append_list',  // Simplified flags
     '-hls_segment_type', 'mpegts',
     '-hls_segment_filename', `${HLS_DIR}/${streamKey}_%03d.ts`,
-    '-hls_allow_cache', '0',
-    '-hls_playlist_type', 'event',
+    '-method', 'PUT',  // Add this for better segment handling
     `${HLS_DIR}/${streamKey}.m3u8`
   ]);
 

@@ -62,52 +62,74 @@
     <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const streamKey = urlParams.get('stream') || 'my-live-stream';
-        const hlsUrl = `/hls/${streamKey}.m3u8`;
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const streamKey = urlParams.get('stream') || 'my-live-stream';
+            const hlsUrl = `/hls/${streamKey}.m3u8`;
 
-        // Initialize video.js player with enhanced low-latency options
-        const player = videojs('live-player', {
-            liveui: true,
-            responsive: true,
-            fluid: true,
-            liveTracker: {
-                trackingThreshold: 0.2, // Reduced threshold
-                liveTolerance: 0.5 // Lower tolerance for "live" determination
-            },
-            sources: [{
+            // Initialize video.js player with more reliable settings
+            const player = videojs('live-player', {
+                liveui: true,
+                responsive: true,
+                fluid: true,
+                autoplay: true,
+                preload: 'auto',
+                liveTracker: {
+                    trackingThreshold: 1,
+                    liveTolerance: 5
+                },
+                html5: {
+                    vhs: {
+                        overrideNative: true,
+                        limitRenditionByPlayerDimensions: false,
+                        useBandwidthFromLocalStorage: true,
+                        // Remove experimental features causing instability
+                        bufferSize: 30
+                    }
+                }
+            });
+            
+            // Create a more reliable source object
+            const sourceObject = {
                 src: hlsUrl,
                 type: 'application/x-mpegURL'
-            }],
-            html5: {
-                vhs: {
-                    withCredentials: false,
-                    overrideNative: true,
-                    lowLatencyMode: true,
-                    useBandwidthFromLocalStorage: true,
-                    experimentalBufferBasedABR: true,
-                    experimentalLLHLS: true,
-                    backBufferLength: 0, // Minimize back buffer
-                    liveSyncDurationCount: 1 // Sync with only 1 segment
-                }
-            }
-        });
-
-        // Always restart playback on page load
-        player.ready(function() {
-            player.currentTime(0);
-            player.play();
+            };
             
-            // Force player to stay close to live edge
-            setInterval(() => {
-                if (player.liveTracker && player.liveTracker.isLive() && 
-                    player.liveTracker.liveCurrentTime() - player.currentTime() > 1) {
-                    player.currentTime(player.liveTracker.liveCurrentTime());
-                }
-            }, 1000);
+            player.src(sourceObject);
+            
+            // Add more robust error handling
+            player.on('error', function() {
+                console.log('Player error detected');
+                setTimeout(function() {
+                    player.src(sourceObject);
+                    player.play();
+                }, 2000);
+            });
+            
+            player.ready(function() {
+                console.log("Player is ready");
+                player.play();
+                
+                // Check if stream is loading too long
+                let loadingTimeoutTimer = null;
+                
+                player.on('waiting', function() {
+                    if (loadingTimeoutTimer !== null) return;
+                    loadingTimeoutTimer = setTimeout(function() {
+                        console.log('Stream loading timeout - reloading player');
+                        player.src(sourceObject);
+                        player.play();
+                    }, 10000); // 10 second timeout
+                });
+                
+                player.on('playing', function() {
+                    if (loadingTimeoutTimer !== null) {
+                        clearTimeout(loadingTimeoutTimer);
+                        loadingTimeoutTimer = null;
+                    }
+                });
+            });
         });
-    });
-</script>
+    </script>
 </body>
 </html>
