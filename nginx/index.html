@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+< lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -66,159 +66,29 @@
             const urlParams = new URLSearchParams(window.location.search);
             const streamKey = urlParams.get('stream') || 'my-live-stream';
             const hlsUrl = `/hls/${streamKey}.m3u8`;
-            
-            // Low latency configuration for VideoJS
+
+            // Initialize video.js player with VHS options
             const player = videojs('live-player', {
                 liveui: true,
                 responsive: true,
                 fluid: true,
-                autoplay: true,
-                preload: 'auto',
-                inactivityTimeout: 0,
-                liveTracker: {
-                    trackingThreshold: 0.5, // Reduced from 1
-                    liveTolerance: 1 // Reduced from 5 for lower latency
-                },
+                sources: [{
+                    src: hlsUrl,
+                    type: 'application/x-mpegURL'
+                }],
                 html5: {
                     vhs: {
+                        withCredentials: false,
                         overrideNative: true,
-                        limitRenditionByPlayerDimensions: false,
-                        useBandwidthFromLocalStorage: true,
-                        bufferSize: 15, // Reduced from 30 for lower latency
-                        lowLatencyMode: true,
-                        enableLowInitialPlaylist: true,
-                        experimentalLLHLS: true
+                        lowLatencyMode: true
                     }
                 }
             });
-            
-            const sourceObject = {
-                src: hlsUrl,
-                type: 'application/x-mpegURL'
-            };
-            
-            player.src(sourceObject);
-            
-            // Enhanced error handling with multiple recovery strategies
-            player.on('error', function(e) {
-                console.log('Player error detected:', player.error());
-                
-                // Try to recover by reloading the source
-                player.src(sourceObject);
-                player.play().catch(err => {
-                    console.log('Failed first recovery attempt:', err);
-                    
-                    // If that fails, try a more aggressive approach after a short delay
-                    setTimeout(() => {
-                        player.reset();
-                        player.src(sourceObject);
-                        player.play().catch(err => console.log('Failed second recovery attempt:', err));
-                    }, 1000);
-                });
-            });
-            
-            // Periodic quality check
-            let qualityCheckInterval;
-            
+
+            // Always restart playback on page load
             player.ready(function() {
-                console.log("Player is ready");
-                player.play().catch(err => console.log('Initial play failed:', err));
-                
-                let loadingTimeoutTimer = null;
-                let stallDetectionTimer = null;
-                let lastPlayPosition = 0;
-                let stuckCounter = 0;
-                
-                // More aggressive waiting detection
-                player.on('waiting', function() {
-                    console.log('Player waiting for data');
-                    
-                    if (loadingTimeoutTimer !== null) return;
-                    
-                    // More aggressive - check after 5 seconds instead of 10
-                    loadingTimeoutTimer = setTimeout(function() {
-                        console.log('Stream loading timeout - reloading player');
-                        player.reset();
-                        player.src(sourceObject);
-                        player.play();
-                    }, 5000); // 5 second timeout (reduced from 10)
-                });
-                
-                player.on('playing', function() {
-                    console.log('Player started playing');
-                    
-                    if (loadingTimeoutTimer !== null) {
-                        clearTimeout(loadingTimeoutTimer);
-                        loadingTimeoutTimer = null;
-                    }
-                    
-                    // Reset stuck counter when playback resumes
-                    stuckCounter = 0;
-                    
-                    // Start monitoring playback progress for stalls
-                    if (!stallDetectionTimer) {
-                        stallDetectionTimer = setInterval(() => {
-                            const currentTime = player.currentTime();
-                            
-                            // Check if player is stuck (position not advancing)
-                            if (player.paused() === false && 
-                                Math.abs(currentTime - lastPlayPosition) < 0.1) {
-                                stuckCounter++;
-                                console.log(`Possible stall detected: ${stuckCounter}`);
-                                
-                                // After 3 seconds of being stuck while not paused
-                                if (stuckCounter >= 3) {
-                                    console.log('Playback appears stuck - forcing reload');
-                                    stuckCounter = 0;
-                                    player.reset();
-                                    player.src(sourceObject);
-                                    player.play();
-                                }
-                            } else {
-                                // Reset stuck counter if position is advancing
-                                stuckCounter = 0;
-                            }
-                            
-                            lastPlayPosition = currentTime;
-                        }, 1000);
-                    }
-                });
-                
-                player.on('pause', function() {
-                    // Clear stall detection if user pauses
-                    if (stallDetectionTimer) {
-                        clearInterval(stallDetectionTimer);
-                        stallDetectionTimer = null;
-                    }
-                });
-                
-                // Monitor buffer health
-                qualityCheckInterval = setInterval(() => {
-                    if (player.readyState() < 3) { // HAVE_FUTURE_DATA = 3
-                        console.log('Buffer health low:', player.readyState());
-                        
-                        // If we're in a poor buffer state for too long
-                        if (player.readyState() <= 1) { // HAVE_METADATA or lower
-                            console.log('Buffer critically low - attempting recovery');
-                            player.reset();
-                            player.src(sourceObject);
-                            player.play();
-                        }
-                    }
-                }, 3000);
-                
-                // Cleanup on dispose
-                player.on('dispose', function() {
-                    if (loadingTimeoutTimer) {
-                        clearTimeout(loadingTimeoutTimer);
-                    }
-                    if (stallDetectionTimer) {
-                        clearInterval(stallDetectionTimer);
-                    }
-                    if (qualityCheckInterval) {
-                        clearInterval(qualityCheckInterval);
-                    }
-                });
+                player.currentTime(0);
+                player.play();
             });
         });
     </script>
