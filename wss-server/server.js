@@ -60,6 +60,7 @@ wss.on('connection', (ws, req) => {
     '-c:a', 'aac',
     '-ar', '44100',
     '-f', 'hls',
+    '-tune', 'zerolatency',
     '-hls_time', '1', // Shorter segment duration
     '-hls_list_size', '3', // Smaller playlist
     '-hls_flags', 'delete_segments+append_list+discont_start', // Add discont_start for better sync
