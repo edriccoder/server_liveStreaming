@@ -80,22 +80,15 @@
                     vhs: {
                         withCredentials: false,
                         overrideNative: true,
-                        // Enable low latency features
-                        lowLatencyMode: true,
-                        // Reduce the goal buffer length to start playing faster
-                        goalBufferLength: 10,
-                        // Max buffer length
-                        maxBufferLength: 15
+                        lowLatencyMode: true
                     }
                 }
             });
 
-            // Seek to the live edge once the player is ready
+            // Always restart playback on page load
             player.ready(function() {
-                this.on('loadedmetadata', () => {
-                    this.currentTime(this.seekable().end(0));
-                });
-                this.play();
+                player.currentTime(0);
+                player.play();
             });
         });
     </script>

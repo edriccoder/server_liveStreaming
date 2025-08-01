@@ -52,18 +52,21 @@ wss.on('connection', (ws, req) => {
 
   // Start FFmpeg process to convert the incoming WebM directly to HLS
   const ffmpeg = spawn('ffmpeg', [
-    '-fflags', '+igndts', // Ignore decoding timestamps
     '-f', 'webm',
-    '-i', 'pipe:0', // Input from stdin
-    '-c:v', 'copy', // Copy video codec if possible, avoids re-encoding
+    '-i', 'pipe:0',
+    '-c:v', 'libx264',
+    '-preset', 'ultrafast', // Lower latency
+    '-tune', 'zerolatency',
     '-c:a', 'aac',
     '-ar', '44100',
     '-f', 'hls',
-    '-hls_time', '1',      // 1-second segments
-    '-hls_list_size', '5', // Keep 5 segments in the playlist
-    '-hls_flags', 'delete_segments+program_date_time', // Delete old segments and add timestamps
+    '-hls_time', '1', // Shorter segment duration
+    '-hls_list_size', '3', // Smaller playlist
+    '-hls_flags', 'delete_segments+append_list+discont_start', // Add discont_start for better sync
     '-hls_segment_type', 'mpegts',
-    '-hls_segment_filename', `${HLS_DIR}/${streamKey}_%05d.ts`,
+    '-hls_segment_filename', `${HLS_DIR}/${streamKey}_%03d.ts`,
+    '-hls_allow_cache', '0', // Disable caching
+    '-hls_playlist_type', 'event', // For live/event
     `${HLS_DIR}/${streamKey}.m3u8`
   ]);
 
@@ -145,7 +148,7 @@ wss.on('connection', (ws, req) => {
 app.use(express.static(path.join(__dirname, '../nginx')));
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, '../nginx/index.html'));
 });
 
 // API endpoint to check active streams
